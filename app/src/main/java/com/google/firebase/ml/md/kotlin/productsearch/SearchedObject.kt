@@ -24,7 +24,7 @@ import com.google.firebase.ml.md.kotlin.Utils
 import com.google.firebase.ml.md.kotlin.objectdetection.DetectedObject
 
 /** Hosts the detected object info and its search result.  */
-class SearchedObject(resources: Resources, private val detectedObject: DetectedObject, val productList: List<Product>) {
+class SearchedObject(resources: Resources, private val detectedObject: DetectedObject) {
 
     private val objectThumbnailCornerRadius: Int = resources.getDimensionPixelOffset(R.dimen.bounding_box_corner_radius)
     private var objectThumbnail: Bitmap? = null

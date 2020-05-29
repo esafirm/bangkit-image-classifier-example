@@ -23,7 +23,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
 import com.google.firebase.ml.vision.barcode.FirebaseVisionBarcode
 import com.google.firebase.ml.md.kotlin.objectdetection.DetectedObject
-import com.google.firebase.ml.md.kotlin.productsearch.Product
 import com.google.firebase.ml.md.kotlin.productsearch.SearchedObject
 import com.google.firebase.ml.md.kotlin.settings.PreferenceUtils
 import java.util.HashSet
@@ -111,18 +110,5 @@ class WorkflowModel(application: Application) : AndroidViewModel(application) {
 
     fun markCameraFrozen() {
         isCameraLive = false
-    }
-
-    fun onSearchCompleted(detectedObject: DetectedObject, products: List<Product>) {
-        val lConfirmedObject = confirmedObject
-        if (detectedObject != lConfirmedObject) {
-            // Drops the search result from the object that has lost focus.
-            return
-        }
-
-        objectIdsToSearch.remove(detectedObject.objectId)
-        setWorkflowState(WorkflowState.SEARCHED)
-
-        searchedObject.value = SearchedObject(context.resources, lConfirmedObject, products)
     }
 }
