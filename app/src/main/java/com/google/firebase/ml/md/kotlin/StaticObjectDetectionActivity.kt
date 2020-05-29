@@ -29,15 +29,11 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.firebase.ml.md.R
 import com.google.firebase.ml.md.kotlin.productsearch.BottomSheetScrimView
-import com.google.firebase.ml.md.kotlin.tflite.Classifier
 import com.google.firebase.ml.md.kotlin.tflite.Classifier.*
 import java.io.IOException
-import java.util.concurrent.Executors
-import kotlin.system.measureTimeMillis
 
 /** Demonstrates the object detection and visual search workflow using static image.  */
 open class StaticObjectDetectionActivity : AppCompatActivity(), View.OnClickListener {
@@ -50,13 +46,18 @@ open class StaticObjectDetectionActivity : AppCompatActivity(), View.OnClickList
     private var bottomSheetScrimView: BottomSheetScrimView? = null
     private var bottomSheetCaptionText: TextView? = null
     private var bottomSheetBestText: TextView? = null
-    private var productRecyclerView: RecyclerView? = null
 
     private var inputBitmap: Bitmap? = null
     private var dotViewSize: Int = 0
     private var currentSelectedObjectIndex = 0
 
-    private var classifier: Classifier? = null
+    private val classifier by lazy {
+        ClassifierHelper(this, ClassifierSpec(
+                Model.QUANTIZED_EFFICIENTNET,
+                Device.CPU,
+                1
+        ))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -112,14 +113,14 @@ open class StaticObjectDetectionActivity : AppCompatActivity(), View.OnClickList
             val resultString = results
                     .subList(1, results.size)
                     .foldIndexed("") { index, acc, recognition ->
-                        "${acc}${index + 2}. ${recognition.title}\n"
+                        "${acc}${index + 2}. ${recognition.formattedString()}\n"
                     }
             bottomSheetCaptionText?.text = resultString
         }
 
-        bottomSheetBestText?.text = "1. ${results.first().title} - ${results.first().confidence} %"
+        bottomSheetBestText?.text = "1. ${results.first().formattedString()}"
         bottomSheetBehavior?.peekHeight = PEEK_HEIGHT
-        bottomSheetBehavior?.state = BottomSheetBehavior.STATE_COLLAPSED
+        bottomSheetBehavior?.state = BottomSheetBehavior.STATE_EXPANDED
     }
 
     private fun setUpBottomSheet() {
@@ -173,57 +174,22 @@ open class StaticObjectDetectionActivity : AppCompatActivity(), View.OnClickList
         inputImageView?.setImageBitmap(inputBitmap)
         loadingView?.visibility = View.VISIBLE
 
-        Executors.newSingleThreadExecutor().execute {
-            recreateClassifier(
-                    Model.QUANTIZED_EFFICIENTNET,
-                    Device.CPU,
-                    1
-            )
+        val validBitmap = inputBitmap ?: throw NullPointerException("Bitmap is null!")
 
-            inputBitmap?.let {
-                processImage(it)
-            } ?: throw NullPointerException("Bitmap is null!")
-        }
-    }
-
-    private fun recreateClassifier(model: Model, device: Device, numThreads: Int) {
-        if (classifier != null) {
-            Logger.d("Closing classifier.")
-            classifier?.close()
-            classifier = null
-        }
-        if (device === Device.GPU
-                && (model === Model.QUANTIZED_MOBILENET || model === Model.QUANTIZED_EFFICIENTNET)) {
-            Logger.d("Not creating classifier: GPU doesn't support quantized models.")
-            runOnUiThread {
-                Toast.makeText(
-                        this,
-                        "Error regarding GPU support for Quant models[CHAR_LIMIT=60]",
-                        Toast.LENGTH_LONG
-                ).show()
-            }
-            return
-        }
-        try {
-            Logger.d("Creating classifier (model=$model, device=$device, numThreads=$numThreads)")
-            classifier = create(this, model, device, numThreads)
-        } catch (e: IOException) {
-            Logger.e("Failed to create classifier: $e")
-        }
-    }
-
-    private fun processImage(rgbFrameBitmap: Bitmap) {
-        val currentClassifier = classifier ?: throw  IllegalStateException("Classifier not ready!")
-
-        measureTimeMillis {
-            val results = currentClassifier.recognizeImage(rgbFrameBitmap, 0)
-            runOnUiThread {
-                showSearchResults(results)
-            }
-            Logger.d("Result ready: $results")
-        }.also {
-            Logger.v("Detect: $it ms")
-        }
+        // Where the magic happen
+        classifier.execute(
+                bitmap = validBitmap,
+                onError = {
+                    Toast.makeText(
+                            this,
+                            "Error regarding GPU support for Quant models[CHAR_LIMIT=60]",
+                            Toast.LENGTH_LONG
+                    ).show()
+                },
+                onResult = {
+                    showSearchResults(it)
+                }
+        )
     }
 
     companion object {
