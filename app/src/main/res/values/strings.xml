@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-  <string name="app_name">MLKit Showcase</string>
+  <string name="app_name">Bangkit Demo</string>
 
   <string name="entry_java_title">Java</string>
   <string name="entry_java_subtitle">Run the MLKit Showcase written in Java.</string>
