@@ -16,77 +16,50 @@
 
 package com.google.firebase.ml.md.kotlin
 
-import android.animation.AnimatorInflater
-import android.animation.AnimatorSet
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
-import android.content.res.Resources
 import android.graphics.Bitmap
-import android.graphics.PointF
-import android.graphics.Rect
-import android.graphics.RectF
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
-import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
-import androidx.annotation.MainThread
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomsheet.BottomSheetBehavior
-import com.google.android.material.chip.Chip
-import com.google.common.collect.ImmutableList
 import com.google.firebase.ml.md.R
 import com.google.firebase.ml.md.kotlin.productsearch.BottomSheetScrimView
-import com.google.firebase.ml.vision.FirebaseVision
-import com.google.firebase.ml.vision.common.FirebaseVisionImage
-import com.google.firebase.ml.vision.objects.FirebaseVisionObject
-import com.google.firebase.ml.vision.objects.FirebaseVisionObjectDetector
-import com.google.firebase.ml.vision.objects.FirebaseVisionObjectDetectorOptions
-import com.google.firebase.ml.md.kotlin.objectdetection.DetectedObject
-import com.google.firebase.ml.md.kotlin.objectdetection.StaticObjectDotView
-import com.google.firebase.ml.md.kotlin.productsearch.PreviewCardAdapter
-import com.google.firebase.ml.md.kotlin.productsearch.Product
-import com.google.firebase.ml.md.kotlin.productsearch.ProductAdapter
-import com.google.firebase.ml.md.kotlin.productsearch.SearchEngine
-import com.google.firebase.ml.md.kotlin.productsearch.SearchedObject
+import com.google.firebase.ml.md.kotlin.tflite.Classifier
+import com.google.firebase.ml.md.kotlin.tflite.Classifier.*
 import java.io.IOException
-import java.lang.NullPointerException
-import java.util.TreeMap
+import java.util.concurrent.Executors
+import kotlin.system.measureTimeMillis
 
 /** Demonstrates the object detection and visual search workflow using static image.  */
-class StaticObjectDetectionActivity : AppCompatActivity(), View.OnClickListener {
-
-    private val searchedObjectMap = TreeMap<Int, SearchedObject>()
+open class StaticObjectDetectionActivity : AppCompatActivity(), View.OnClickListener {
 
     private var loadingView: View? = null
-    private var bottomPromptChip: Chip? = null
     private var inputImageView: ImageView? = null
-    private var previewCardCarousel: RecyclerView? = null
     private var dotViewContainer: ViewGroup? = null
 
     private var bottomSheetBehavior: BottomSheetBehavior<View>? = null
     private var bottomSheetScrimView: BottomSheetScrimView? = null
-    private var bottomSheetTitleView: TextView? = null
+    private var bottomSheetCaptionText: TextView? = null
+    private var bottomSheetBestText: TextView? = null
     private var productRecyclerView: RecyclerView? = null
 
     private var inputBitmap: Bitmap? = null
-    private var searchedObjectForBottomSheet: SearchedObject? = null
     private var dotViewSize: Int = 0
-    private var detectedObjectNum = 0
     private var currentSelectedObjectIndex = 0
 
-    private var detector: FirebaseVisionObjectDetector? = null
-    private var searchEngine: SearchEngine? = null
+    private var classifier: Classifier? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        searchEngine = SearchEngine(applicationContext)
 
         setContentView(R.layout.activity_static_object_kotlin)
 
@@ -94,15 +67,7 @@ class StaticObjectDetectionActivity : AppCompatActivity(), View.OnClickListener 
             setOnClickListener(this@StaticObjectDetectionActivity)
         }
 
-        bottomPromptChip = findViewById(R.id.bottom_prompt_chip)
         inputImageView = findViewById(R.id.input_image_view)
-
-        previewCardCarousel = findViewById<RecyclerView>(R.id.card_recycler_view).apply {
-            setHasFixedSize(true)
-            layoutManager = LinearLayoutManager(this@StaticObjectDetectionActivity, RecyclerView.HORIZONTAL, false)
-            addItemDecoration(CardItemDecoration(resources))
-        }
-
         dotViewContainer = findViewById(R.id.dot_view_container)
         dotViewSize = resources.getDimensionPixelOffset(R.dimen.static_image_dot_view_size)
 
@@ -111,25 +76,7 @@ class StaticObjectDetectionActivity : AppCompatActivity(), View.OnClickListener 
         findViewById<View>(R.id.close_button).setOnClickListener(this)
         findViewById<View>(R.id.photo_library_button).setOnClickListener(this)
 
-        detector = FirebaseVision.getInstance()
-                .getOnDeviceObjectDetector(
-                        FirebaseVisionObjectDetectorOptions.Builder()
-                                .setDetectorMode(FirebaseVisionObjectDetectorOptions.SINGLE_IMAGE_MODE)
-                                .enableMultipleObjects()
-                                .build()
-                )
-        intent.data?.let(::detectObjects)
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        try {
-            detector?.close()
-        } catch (e: IOException) {
-            Log.e(TAG, "Failed to close the detector!", e)
-        }
-
-        searchEngine?.shutdown()
+        intent?.data?.let(::detectObjects)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -156,21 +103,29 @@ class StaticObjectDetectionActivity : AppCompatActivity(), View.OnClickListener 
         }
     }
 
-    private fun showSearchResults(searchedObject: SearchedObject) {
-        searchedObjectForBottomSheet = searchedObject
-        val productList = searchedObject.productList
-        bottomSheetTitleView?.text = resources
-                .getQuantityString(
-                        R.plurals.bottom_sheet_title, productList.size, productList.size)
-        productRecyclerView?.adapter = ProductAdapter(productList)
-        bottomSheetBehavior?.peekHeight = (inputImageView?.parent as View).height / 2
+    @SuppressLint("SetTextI18n")
+    private fun showSearchResults(results: List<Recognition>) {
+        loadingView?.visibility = View.GONE
+
+        // Create caption, the unclean way
+        if (results.size > 1) {
+            val resultString = results
+                    .subList(1, results.size)
+                    .foldIndexed("") { index, acc, recognition ->
+                        "${acc}${index + 2}. ${recognition.title}\n"
+                    }
+            bottomSheetCaptionText?.text = resultString
+        }
+
+        bottomSheetBestText?.text = "1. ${results.first().title} - ${results.first().confidence} %"
+        bottomSheetBehavior?.peekHeight = PEEK_HEIGHT
         bottomSheetBehavior?.state = BottomSheetBehavior.STATE_COLLAPSED
     }
 
     private fun setUpBottomSheet() {
-        bottomSheetBehavior = BottomSheetBehavior.from(findViewById<View>(R.id.bottom_sheet)).apply {
-
-            setBottomSheetCallback(
+        val bottomSheetView = findViewById<View>(R.id.bottom_sheet)
+        bottomSheetBehavior = BottomSheetBehavior.from(bottomSheetView).apply {
+            addBottomSheetCallback(
                     object : BottomSheetBehavior.BottomSheetCallback() {
                         override fun onStateChanged(bottomSheet: View, newState: Int) {
                             Log.d(TAG, "Bottom sheet new state: $newState")
@@ -179,15 +134,13 @@ class StaticObjectDetectionActivity : AppCompatActivity(), View.OnClickListener 
                         }
 
                         override fun onSlide(bottomSheet: View, slideOffset: Float) {
-                            if (java.lang.Float.isNaN(slideOffset)) {
+                            if (slideOffset.isNaN()) {
                                 return
                             }
 
                             val collapsedStateHeight = bottomSheetBehavior!!.peekHeight.coerceAtMost(bottomSheet.height)
-                            val searchedObjectForBottomSheet = searchedObjectForBottomSheet
-                                    ?: return
                             bottomSheetScrimView?.updateWithThumbnailTranslate(
-                                    searchedObjectForBottomSheet.getObjectThumbnail(),
+                                    inputBitmap!!,
                                     collapsedStateHeight,
                                     slideOffset,
                                     bottomSheet)
@@ -201,19 +154,12 @@ class StaticObjectDetectionActivity : AppCompatActivity(), View.OnClickListener 
             setOnClickListener(this@StaticObjectDetectionActivity)
         }
 
-        bottomSheetTitleView = findViewById(R.id.bottom_sheet_title)
-        productRecyclerView = findViewById<RecyclerView>(R.id.product_recycler_view)?.apply {
-            setHasFixedSize(true)
-            layoutManager = LinearLayoutManager(this@StaticObjectDetectionActivity)
-            adapter = ProductAdapter(ImmutableList.of())
-        }
+        bottomSheetCaptionText = findViewById(R.id.bottom_sheet_caption)
+        bottomSheetBestText = findViewById(R.id.bottom_sheet_best_match)
     }
 
     private fun detectObjects(imageUri: Uri) {
         inputImageView?.setImageDrawable(null)
-        bottomPromptChip?.visibility = View.GONE
-        previewCardCarousel?.adapter = PreviewCardAdapter(ImmutableList.of()) { showSearchResults(it) }
-        previewCardCarousel?.clearOnScrollListeners()
         dotViewContainer?.removeAllViews()
         currentSelectedObjectIndex = 0
 
@@ -221,157 +167,68 @@ class StaticObjectDetectionActivity : AppCompatActivity(), View.OnClickListener 
             inputBitmap = Utils.loadImage(this, imageUri, MAX_IMAGE_DIMENSION)
         } catch (e: IOException) {
             Log.e(TAG, "Failed to load file: $imageUri", e)
-            showBottomPromptChip("Failed to load file!")
             return
         }
 
         inputImageView?.setImageBitmap(inputBitmap)
         loadingView?.visibility = View.VISIBLE
-        val image = FirebaseVisionImage.fromBitmap(inputBitmap!!)
-        detector?.processImage(image)
-                ?.addOnSuccessListener { objects -> onObjectsDetected(image, objects) }
-                ?.addOnFailureListener { onObjectsDetected(image, ImmutableList.of()) }
-    }
 
-    @MainThread
-    private fun onObjectsDetected(image: FirebaseVisionImage, objects: List<FirebaseVisionObject>) {
-        detectedObjectNum = objects.size
-        Log.d(TAG, "Detected objects num: $detectedObjectNum")
-        if (detectedObjectNum == 0) {
-            loadingView?.visibility = View.GONE
-            showBottomPromptChip(getString(R.string.static_image_prompt_detected_no_results))
-        } else {
-            searchedObjectMap.clear()
-            for (i in objects.indices) {
-                searchEngine?.search(DetectedObject(objects[i], i, image)) { detectedObject, products ->
-                    onSearchCompleted(detectedObject, products)
-                }
-            }
+        Executors.newSingleThreadExecutor().execute {
+            recreateClassifier(
+                    Model.QUANTIZED_EFFICIENTNET,
+                    Device.CPU,
+                    1
+            )
+
+            inputBitmap?.let {
+                processImage(it)
+            } ?: throw NullPointerException("Bitmap is null!")
         }
     }
 
-    private fun onSearchCompleted(detectedObject: DetectedObject, productList: List<Product>) {
-        Log.d(TAG, "Search completed for object index: ${detectedObject.objectIndex}")
-        searchedObjectMap[detectedObject.objectIndex] = SearchedObject(resources, detectedObject, productList)
-        if (searchedObjectMap.size < detectedObjectNum) {
-            // Hold off showing the result until the search of all detected objects completes.
+    private fun recreateClassifier(model: Model, device: Device, numThreads: Int) {
+        if (classifier != null) {
+            Logger.d("Closing classifier.")
+            classifier?.close()
+            classifier = null
+        }
+        if (device === Device.GPU
+                && (model === Model.QUANTIZED_MOBILENET || model === Model.QUANTIZED_EFFICIENTNET)) {
+            Logger.d("Not creating classifier: GPU doesn't support quantized models.")
+            runOnUiThread {
+                Toast.makeText(
+                        this,
+                        "Error regarding GPU support for Quant models[CHAR_LIMIT=60]",
+                        Toast.LENGTH_LONG
+                ).show()
+            }
             return
         }
-
-        showBottomPromptChip(getString(R.string.static_image_prompt_detected_results))
-        loadingView?.visibility = View.GONE
-        previewCardCarousel?.adapter =
-                PreviewCardAdapter(ImmutableList.copyOf(searchedObjectMap.values)) { showSearchResults(it) }
-        previewCardCarousel?.addOnScrollListener(
-                object : RecyclerView.OnScrollListener() {
-                    override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
-                        Log.d(TAG, "New card scroll state: $newState")
-                        if (newState == RecyclerView.SCROLL_STATE_IDLE) {
-                            for (i in 0 until recyclerView.childCount) {
-                                val childView = recyclerView.getChildAt(i)
-                                if (childView.x >= 0) {
-                                    val cardIndex = recyclerView.getChildAdapterPosition(childView)
-                                    if (cardIndex != currentSelectedObjectIndex) {
-                                        selectNewObject(cardIndex)
-                                    }
-                                    break
-                                }
-                            }
-                        }
-                    }
-                })
-
-        for (searchedObject in searchedObjectMap.values) {
-            val dotView = createDotView(searchedObject)
-            dotView.setOnClickListener {
-                if (searchedObject.objectIndex == currentSelectedObjectIndex) {
-                    showSearchResults(searchedObject)
-                } else {
-                    selectNewObject(searchedObject.objectIndex)
-                    showSearchResults(searchedObject)
-                    previewCardCarousel!!.smoothScrollToPosition(searchedObject.objectIndex)
-                }
-            }
-
-            dotViewContainer?.addView(dotView)
-            val animatorSet = AnimatorInflater.loadAnimator(this, R.animator.static_image_dot_enter) as AnimatorSet
-            animatorSet.setTarget(dotView)
-            animatorSet.start()
+        try {
+            Logger.d("Creating classifier (model=$model, device=$device, numThreads=$numThreads)")
+            classifier = create(this, model, device, numThreads)
+        } catch (e: IOException) {
+            Logger.e("Failed to create classifier: $e")
         }
     }
 
-    private fun createDotView(searchedObject: SearchedObject): StaticObjectDotView {
-        val viewCoordinateScale: Float
-        val horizontalGap: Float
-        val verticalGap: Float
-        val inputImageView = inputImageView ?: throw NullPointerException()
-        val inputBitmap = inputBitmap ?: throw NullPointerException()
-        val inputImageViewRatio = inputImageView.width.toFloat() / inputImageView.height
-        val inputBitmapRatio = inputBitmap.width.toFloat() / inputBitmap.height
-        if (inputBitmapRatio <= inputImageViewRatio) { // Image content fills height
-            viewCoordinateScale = inputImageView.height.toFloat() / inputBitmap.height
-            horizontalGap = (inputImageView.width - inputBitmap.width * viewCoordinateScale) / 2
-            verticalGap = 0f
-        } else { // Image content fills width
-            viewCoordinateScale = inputImageView.width.toFloat() / inputBitmap.width
-            horizontalGap = 0f
-            verticalGap = (inputImageView.height - inputBitmap.height * viewCoordinateScale) / 2
-        }
+    private fun processImage(rgbFrameBitmap: Bitmap) {
+        val currentClassifier = classifier ?: throw  IllegalStateException("Classifier not ready!")
 
-        val boundingBox = searchedObject.boundingBox
-        val boxInViewCoordinate = RectF(
-                boundingBox.left * viewCoordinateScale + horizontalGap,
-                boundingBox.top * viewCoordinateScale + verticalGap,
-                boundingBox.right * viewCoordinateScale + horizontalGap,
-                boundingBox.bottom * viewCoordinateScale + verticalGap
-        )
-        val initialSelected = searchedObject.objectIndex == 0
-        val dotView = StaticObjectDotView(this, initialSelected)
-        val layoutParams = FrameLayout.LayoutParams(dotViewSize, dotViewSize)
-        val dotCenter = PointF(
-                (boxInViewCoordinate.right + boxInViewCoordinate.left) / 2,
-                (boxInViewCoordinate.bottom + boxInViewCoordinate.top) / 2)
-        layoutParams.setMargins(
-                (dotCenter.x - dotViewSize / 2f).toInt(),
-                (dotCenter.y - dotViewSize / 2f).toInt(),
-                0,
-                0
-        )
-        dotView.layoutParams = layoutParams
-        return dotView
-    }
-
-    private fun selectNewObject(objectIndex: Int) {
-        val dotViewToDeselect = dotViewContainer!!.getChildAt(currentSelectedObjectIndex) as StaticObjectDotView
-        dotViewToDeselect.playAnimationWithSelectedState(false)
-
-        currentSelectedObjectIndex = objectIndex
-
-        val selectedDotView = dotViewContainer!!.getChildAt(currentSelectedObjectIndex) as StaticObjectDotView
-        selectedDotView.playAnimationWithSelectedState(true)
-    }
-
-    private fun showBottomPromptChip(message: String) {
-        bottomPromptChip?.visibility = View.VISIBLE
-        bottomPromptChip?.text = message
-    }
-
-    private class CardItemDecoration constructor(resources: Resources) : RecyclerView.ItemDecoration() {
-
-        private val cardSpacing: Int = resources.getDimensionPixelOffset(R.dimen.preview_card_spacing)
-
-        override fun getItemOffsets(outRect: Rect, view: View, parent: RecyclerView, state: RecyclerView.State) {
-            val adapterPosition = parent.getChildAdapterPosition(view)
-            outRect.left = if (adapterPosition == 0) cardSpacing * 2 else cardSpacing
-            val adapter = parent.adapter ?: return
-            if (adapterPosition == adapter.itemCount - 1) {
-                outRect.right = cardSpacing
+        measureTimeMillis {
+            val results = currentClassifier.recognizeImage(rgbFrameBitmap, 0)
+            runOnUiThread {
+                showSearchResults(results)
             }
+            Logger.d("Result ready: $results")
+        }.also {
+            Logger.v("Detect: $it ms")
         }
     }
 
     companion object {
         private const val TAG = "StaticObjectActivity"
         private const val MAX_IMAGE_DIMENSION = 1024
+        private const val PEEK_HEIGHT = 200
     }
 }

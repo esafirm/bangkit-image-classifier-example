@@ -19,6 +19,7 @@
   <dimen name="bottom_prompt_chip_margin_bottom">28dp</dimen>
   <dimen name="bottom_prompt_chip_corner_radius">8dp</dimen>
   <dimen name="bottom_sheet_title_margin">16dp</dimen>
+  <dimen name="bottom_sheet_best_size">20sp</dimen>
   <dimen name="bottom_sheet_title_size">16sp</dimen>
   <dimen name="bounding_box_stroke_width">1dp</dimen>
   <dimen name="bounding_box_confirmed_stroke_width">2dp</dimen>

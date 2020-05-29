@@ -21,6 +21,10 @@ android {
         }
     }
 
+    aaptOptions {
+        noCompress "tflite"
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
@@ -59,7 +63,7 @@ dependencies {
     final tfliteVersion = '0.0.0-nightly'
     implementation "org.tensorflow:tensorflow-lite:$tfliteVersion"
     implementation "org.tensorflow:tensorflow-lite-gpu:$tfliteVersion"
-//    implementation "org.tensorflow:tensorflow-lite-support:$tfliteVersion"
+    implementation "org.tensorflow:tensorflow-lite-support:$tfliteVersion"
 
     api 'com.google.guava:guava:28.2-jre'
 }

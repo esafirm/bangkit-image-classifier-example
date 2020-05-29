@@ -245,12 +245,12 @@ class LiveObjectDetectionActivity : AppCompatActivity(), OnClickListener {
             setOnClickListener(this@LiveObjectDetectionActivity)
         }
 
-        bottomSheetTitleView = findViewById(R.id.bottom_sheet_title)
-        productRecyclerView = findViewById<RecyclerView>(R.id.product_recycler_view).apply {
-            setHasFixedSize(true)
-            layoutManager = LinearLayoutManager(this@LiveObjectDetectionActivity)
-            adapter = ProductAdapter(ImmutableList.of())
-        }
+//        bottomSheetTitleView = findViewById(R.id.bottom_sheet_title)
+//        productRecyclerView = findViewById<RecyclerView>(R.id.product_recycler_view).apply {
+//            setHasFixedSize(true)
+//            layoutManager = LinearLayoutManager(this@LiveObjectDetectionActivity)
+//            adapter = ProductAdapter(ImmutableList.of())
+//        }
     }
 
     private fun setUpWorkflowModel() {
