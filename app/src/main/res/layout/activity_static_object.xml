@@ -74,7 +74,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="@dimen/static_image_loading_view_text_margin_bottom"
         android:layout_gravity="bottom|center_horizontal"
-        android:text="@string/prompt_searching"
+        android:text="@string/prompt_processing"
         android:textColor="@color/white"
         android:textSize="@dimen/static_image_loading_view_text_size"/>
 
