@@ -1,0 +1,67 @@
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+
+android {
+    compileSdkVersion 29
+    defaultConfig {
+        applicationId "com.google.firebase.ml.md"
+        minSdkVersion 19
+        targetSdkVersion 29
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        vectorDrawables.useSupportLibrary = true
+        multiDexEnabled true
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_1_8.toString()
+    }
+
+    defaultConfig {
+        ndk {
+            abiFilters 'x86', 'armeabi'
+        }
+    }
+}
+
+androidExtensions {
+    experimental = true
+}
+
+dependencies {
+    implementation 'com.android.volley:volley:1.1.1'
+    implementation 'com.google.android.material:material:1.1.0'
+    implementation "android.arch.lifecycle:extensions:1.1.1"
+    implementation "androidx.annotation:annotation:1.1.0"
+    implementation "androidx.core:core-ktx:1.2.0"
+    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.2.0"
+    implementation 'androidx.preference:preference:1.1.1'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.3.72"
+
+    // MLKit Dependencies
+    implementation 'com.google.firebase:firebase-ml-vision:24.0.2'
+    implementation 'com.google.firebase:firebase-ml-vision-object-detection-model:19.0.4'
+
+    // Tflite
+    final tfliteVersion = '0.0.0-nightly'
+    implementation "org.tensorflow:tensorflow-lite:$tfliteVersion"
+    implementation "org.tensorflow:tensorflow-lite-gpu:$tfliteVersion"
+//    implementation "org.tensorflow:tensorflow-lite-support:$tfliteVersion"
+
+    api 'com.google.guava:guava:28.2-jre'
+}
+
+apply plugin: 'com.google.gms.google-services'
