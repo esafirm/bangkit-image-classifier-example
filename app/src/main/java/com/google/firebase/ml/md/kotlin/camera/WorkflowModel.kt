@@ -21,11 +21,10 @@ import android.content.Context
 import androidx.annotation.MainThread
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
-import com.google.firebase.ml.vision.barcode.FirebaseVisionBarcode
 import com.google.firebase.ml.md.kotlin.objectdetection.DetectedObject
 import com.google.firebase.ml.md.kotlin.productsearch.SearchedObject
 import com.google.firebase.ml.md.kotlin.settings.PreferenceUtils
-import java.util.HashSet
+import java.util.*
 
 /** View model for handling application workflow based on camera preview.  */
 class WorkflowModel(application: Application) : AndroidViewModel(application) {
@@ -33,7 +32,6 @@ class WorkflowModel(application: Application) : AndroidViewModel(application) {
     val workflowState = MutableLiveData<WorkflowState>()
     val objectToSearch = MutableLiveData<DetectedObject>()
     val searchedObject = MutableLiveData<SearchedObject>()
-    val detectedBarcode = MutableLiveData<FirebaseVisionBarcode>()
 
     private val objectIdsToSearch = HashSet<Int>()
 
