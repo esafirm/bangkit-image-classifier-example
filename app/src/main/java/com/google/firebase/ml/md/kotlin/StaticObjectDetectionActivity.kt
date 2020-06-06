@@ -80,6 +80,11 @@ open class StaticObjectDetectionActivity : AppCompatActivity(), View.OnClickList
         intent?.data?.let(::detectObjects)
     }
 
+    override fun onStop() {
+        super.onStop()
+        classifier.close()
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode == Utils.REQUEST_CODE_PHOTO_LIBRARY && resultCode == Activity.RESULT_OK) {
             data?.data?.let(::detectObjects)

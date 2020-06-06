@@ -146,6 +146,7 @@ class LiveObjectDetectionActivity : AppCompatActivity(), OnClickListener {
         super.onDestroy()
         cameraSource?.release()
         cameraSource = null
+        classifier.close()
     }
 
     override fun onBackPressed() {

@@ -18,7 +18,6 @@ import android.app.Activity
 import android.graphics.Bitmap
 import android.graphics.RectF
 import android.os.SystemClock
-import android.os.Trace
 import com.google.firebase.ml.md.kotlin.Logger.d
 import com.google.firebase.ml.md.kotlin.Logger.v
 import org.tensorflow.lite.Interpreter
@@ -47,7 +46,8 @@ abstract class Classifier protected constructor(activity: Activity?, device: Dev
      * The model type used for classification.
      */
     enum class Model {
-        FLOAT_MOBILENET, QUANTIZED_MOBILENET, FLOAT_EFFICIENTNET, QUANTIZED_EFFICIENTNET
+        QUANTIZED_EFFICIENTNET,
+        QUANTIZED_MOBILENET
     }
 
     /**
@@ -122,23 +122,23 @@ abstract class Classifier protected constructor(activity: Activity?, device: Dev
      * An immutable result returned by a Classifier describing what was recognized.
      */
     class Recognition(
-            /**
-             * A unique identifier for what has been recognized. Specific to the class, not the instance of
-             * the object.
-             */
-            val id: String?,
-            /**
-             * Display name for the recognition.
-             */
-            val title: String?,
-            /**
-             * A sortable score for how good the recognition is relative to others. Higher should be better.
-             */
-            val confidence: Float?,
-            /**
-             * Optional location within the source image for the location of the recognized object.
-             */
-            private var location: RectF?) {
+        /**
+         * A unique identifier for what has been recognized. Specific to the class, not the instance of
+         * the object.
+         */
+        val id: String?,
+        /**
+         * Display name for the recognition.
+         */
+        val title: String?,
+        /**
+         * A sortable score for how good the recognition is relative to others. Higher should be better.
+         */
+        val confidence: Float?,
+        /**
+         * Optional location within the source image for the location of the recognized object.
+         */
+        private var location: RectF?) {
 
         fun getLocation(): RectF {
             return RectF(location)
@@ -172,27 +172,20 @@ abstract class Classifier protected constructor(activity: Activity?, device: Dev
      * Runs inference and returns the classification results.
      */
     fun recognizeImage(bitmap: Bitmap, sensorOrientation: Int): List<Recognition> {
-        // Logs this method so that it can be analyzed with systrace.
-        Trace.beginSection("recognizeImage")
-        Trace.beginSection("loadImage")
         val startTimeForLoadImage = SystemClock.uptimeMillis()
         inputImageBuffer = loadImage(bitmap, sensorOrientation)
         val endTimeForLoadImage = SystemClock.uptimeMillis()
-        Trace.endSection()
         v("Timecost to load the image: " + (endTimeForLoadImage - startTimeForLoadImage))
 
         // Runs the inference call.
-        Trace.beginSection("runInference")
         val startTimeForReference = SystemClock.uptimeMillis()
         tflite!!.run(inputImageBuffer.buffer, outputProbabilityBuffer.buffer.rewind())
         val endTimeForReference = SystemClock.uptimeMillis()
-        Trace.endSection()
         v("Timecost to run model inference: " + (endTimeForReference - startTimeForReference))
 
         // Gets the map of label and probability.
         val labeledProbability = TensorLabel(labels, probabilityProcessor.process(outputProbabilityBuffer))
-                .mapWithFloatValue
-        Trace.endSection()
+            .mapWithFloatValue
 
         // Gets top-k results.
         return getTopKProbability(labeledProbability)
@@ -229,11 +222,11 @@ abstract class Classifier protected constructor(activity: Activity?, device: Dev
         val numRotation = sensorOrientation / 90
         // TODO(b/143564309): Fuse ops inside ImageProcessor.
         val imageProcessor = ImageProcessor.Builder()
-                .add(ResizeWithCropOrPadOp(cropSize, cropSize))
-                .add(ResizeOp(imageSizeX, imageSizeY, ResizeMethod.NEAREST_NEIGHBOR))
-                .add(Rot90Op(numRotation))
-                .add(preprocessNormalizeOp)
-                .build()
+            .add(ResizeWithCropOrPadOp(cropSize, cropSize))
+            .add(ResizeOp(imageSizeX, imageSizeY, ResizeMethod.NEAREST_NEIGHBOR))
+            .add(Rot90Op(numRotation))
+            .add(preprocessNormalizeOp)
+            .build()
         return imageProcessor.process(inputImageBuffer)
     }
 
@@ -280,13 +273,7 @@ abstract class Classifier protected constructor(activity: Activity?, device: Dev
          */
         @Throws(IOException::class)
         fun create(activity: Activity?, model: Model, device: Device?, numThreads: Int): Classifier {
-            return if (model == Model.QUANTIZED_MOBILENET) {
-                ClassifierQuantizedMobileNet(activity, device, numThreads)
-            } else if (model == Model.FLOAT_MOBILENET) {
-                ClassifierFloatMobileNet(activity, device, numThreads)
-            } else if (model == Model.FLOAT_EFFICIENTNET) {
-                ClassifierFloatEfficientNet(activity, device, numThreads)
-            } else if (model == Model.QUANTIZED_EFFICIENTNET) {
+            return if (model == Model.QUANTIZED_EFFICIENTNET) {
                 ClassifierQuantizedEfficientNet(activity, device, numThreads)
             } else {
                 throw UnsupportedOperationException()
@@ -299,10 +286,10 @@ abstract class Classifier protected constructor(activity: Activity?, device: Dev
         private fun getTopKProbability(labelProb: Map<String, Float>): List<Recognition> {
             // Find the best classifications.
             val pq = PriorityQueue(
-                    MAX_RESULTS,
-                    Comparator<Recognition> { lhs, rhs -> // Intentionally reversed to put high confidence at the head of the queue.
-                        java.lang.Float.compare(rhs.confidence!!, lhs.confidence!!)
-                    })
+                MAX_RESULTS,
+                Comparator<Recognition> { lhs, rhs -> // Intentionally reversed to put high confidence at the head of the queue.
+                    java.lang.Float.compare(rhs.confidence!!, lhs.confidence!!)
+                })
             for ((key, value) in labelProb) {
                 pq.add(Recognition("" + key, key, value, null))
             }

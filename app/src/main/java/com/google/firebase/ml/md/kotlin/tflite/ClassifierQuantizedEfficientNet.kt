@@ -25,15 +25,11 @@ class ClassifierQuantizedEfficientNet(
         numThreads: Int
 ) : Classifier(activity, device, numThreads) {
 
-    // you can download this file from
-    // see build.gradle for where to obtain this file. It should be auto
-    // downloaded into assets.
+    // This file is located in our asset dir (src/main/assets)
     override val modelPath: String
-        get() =// you can download this file from
-        // see build.gradle for where to obtain this file. It should be auto
-                // downloaded into assets.
-            "efficientnet-lite0-int8.tflite"
+        get() = "efficientnet-lite0-int8.tflite"
 
+    // This file is located in our asset dir (src/main/assets)
     override val labelPath: String
         get() = "labels_without_background.txt"
 

@@ -65,4 +65,8 @@ class ClassifierHelper(
             Logger.v("Detect: $it ms")
         }
     }
+
+    fun close() {
+        classifier?.close()
+    }
 }

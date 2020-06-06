@@ -25,15 +25,11 @@ class ClassifierQuantizedMobileNet(
         numThreads: Int
 ) : Classifier(activity, device, numThreads) {
 
-    // you can download this file from
-    // see build.gradle for where to obtain this file. It should be auto
-    // downloaded into assets.
+    // This file is located in our asset dir (src/main/assets)
     override val modelPath: String
-        get() =// you can download this file from
-        // see build.gradle for where to obtain this file. It should be auto
-                // downloaded into assets.
-            "mobilenet_v1_1.0_224_quant.tflite"
+        get() = "mobilenet_v1_1.0_224_quant.tflite"
 
+    // This file is located in our asset dir (src/main/assets)
     override val labelPath: String
         get() = "labels.txt"
 
