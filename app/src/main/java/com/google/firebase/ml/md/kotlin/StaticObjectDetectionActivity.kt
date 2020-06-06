@@ -53,7 +53,7 @@ open class StaticObjectDetectionActivity : AppCompatActivity(), View.OnClickList
 
     private val classifier by lazy {
         ClassifierHelper(this, ClassifierSpec(
-                Model.QUANTIZED_EFFICIENTNET,
+                Model.QUANTIZED_HOTDOG,
                 Device.CPU,
                 1
         ))
