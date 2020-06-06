@@ -10,7 +10,7 @@ class ClassifierHotDog(activity: Activity?,
 ) : Classifier(activity, device, numThreads) {
 
     override val modelPath: String
-        get() = "hotdog_quant.tflite"
+        get() = "hotdog.tflite"
 
     override val labelPath: String
         get() = "hotdog_label.txt"
