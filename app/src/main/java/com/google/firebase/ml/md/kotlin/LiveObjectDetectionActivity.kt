@@ -95,7 +95,7 @@ class LiveObjectDetectionActivity : AppCompatActivity(), OnClickListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_live_object_kotlin)
+        setContentView(R.layout.activity_live_object)
 
         graphicOverlay.apply {
             setOnClickListener(this@LiveObjectDetectionActivity)

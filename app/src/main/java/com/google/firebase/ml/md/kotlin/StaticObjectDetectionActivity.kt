@@ -31,16 +31,13 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.firebase.ml.md.R
+import com.google.firebase.ml.md.databinding.ActivityStaticObjectBinding
 import com.google.firebase.ml.md.kotlin.productsearch.BottomSheetScrimView
 import com.google.firebase.ml.md.kotlin.tflite.Classifier.*
 import java.io.IOException
 
 /** Demonstrates the object detection and visual search workflow using static image.  */
 open class StaticObjectDetectionActivity : AppCompatActivity(), View.OnClickListener {
-
-    private var loadingView: View? = null
-    private var inputImageView: ImageView? = null
-    private var dotViewContainer: ViewGroup? = null
 
     private var bottomSheetBehavior: BottomSheetBehavior<View>? = null
     private var bottomSheetScrimView: BottomSheetScrimView? = null
@@ -51,25 +48,29 @@ open class StaticObjectDetectionActivity : AppCompatActivity(), View.OnClickList
     private var dotViewSize: Int = 0
     private var currentSelectedObjectIndex = 0
 
+    private val viewBinding by lazy {
+        ActivityStaticObjectBinding.inflate(layoutInflater)
+    }
+
+    private val inputImageView: ImageView get() = viewBinding.inputImageView
+    private val dotViewContainer: ViewGroup get() = viewBinding.dotViewContainer
+
     private val classifier by lazy {
-        ClassifierHelper(this, ClassifierSpec(
+        ClassifierHelper(
+            this, ClassifierSpec(
                 Model.QUANTIZED_EFFICIENTNET,
                 Device.CPU,
                 1
-        ))
+            )
+        )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        setContentView(R.layout.activity_static_object_kotlin)
+        setContentView(viewBinding.root)
 
-        loadingView = findViewById<View>(R.id.loading_view).apply {
-            setOnClickListener(this@StaticObjectDetectionActivity)
-        }
-
-        inputImageView = findViewById(R.id.input_image_view)
-        dotViewContainer = findViewById(R.id.dot_view_container)
+        viewBinding.loadingView.setOnClickListener(this@StaticObjectDetectionActivity)
         dotViewSize = resources.getDimensionPixelOffset(R.dimen.static_image_dot_view_size)
 
         setUpBottomSheet()
@@ -106,15 +107,15 @@ open class StaticObjectDetectionActivity : AppCompatActivity(), View.OnClickList
 
     @SuppressLint("SetTextI18n")
     private fun showSearchResults(results: List<Recognition>) {
-        loadingView?.visibility = View.GONE
+        viewBinding.loadingView.visibility = View.GONE
 
         // Create caption, the unclean way
         if (results.size > 1) {
             val resultString = results
-                    .subList(1, results.size)
-                    .foldIndexed("") { index, acc, recognition ->
-                        "${acc}${index + 2}. ${recognition.formattedString()}\n"
-                    }
+                .subList(1, results.size)
+                .foldIndexed("") { index, acc, recognition ->
+                    "${acc}${index + 2}. ${recognition.formattedString()}\n"
+                }
             bottomSheetCaptionText?.text = resultString
         }
 
@@ -127,26 +128,27 @@ open class StaticObjectDetectionActivity : AppCompatActivity(), View.OnClickList
         val bottomSheetView = findViewById<View>(R.id.bottom_sheet)
         bottomSheetBehavior = BottomSheetBehavior.from(bottomSheetView).apply {
             addBottomSheetCallback(
-                    object : BottomSheetBehavior.BottomSheetCallback() {
-                        override fun onStateChanged(bottomSheet: View, newState: Int) {
-                            Log.d(TAG, "Bottom sheet new state: $newState")
-                            bottomSheetScrimView?.visibility =
-                                    if (newState == BottomSheetBehavior.STATE_HIDDEN) View.GONE else View.VISIBLE
-                        }
-
-                        override fun onSlide(bottomSheet: View, slideOffset: Float) {
-                            if (slideOffset.isNaN()) {
-                                return
-                            }
-
-                            val collapsedStateHeight = bottomSheetBehavior!!.peekHeight.coerceAtMost(bottomSheet.height)
-                            bottomSheetScrimView?.updateWithThumbnailTranslate(
-                                    inputBitmap!!,
-                                    collapsedStateHeight,
-                                    slideOffset,
-                                    bottomSheet)
-                        }
+                object : BottomSheetBehavior.BottomSheetCallback() {
+                    override fun onStateChanged(bottomSheet: View, newState: Int) {
+                        Log.d(TAG, "Bottom sheet new state: $newState")
+                        bottomSheetScrimView?.visibility =
+                            if (newState == BottomSheetBehavior.STATE_HIDDEN) View.GONE else View.VISIBLE
                     }
+
+                    override fun onSlide(bottomSheet: View, slideOffset: Float) {
+                        if (slideOffset.isNaN()) {
+                            return
+                        }
+
+                        val collapsedStateHeight = bottomSheetBehavior!!.peekHeight.coerceAtMost(bottomSheet.height)
+                        bottomSheetScrimView?.updateWithThumbnailTranslate(
+                            inputBitmap!!,
+                            collapsedStateHeight,
+                            slideOffset,
+                            bottomSheet
+                        )
+                    }
+                }
             )
             state = BottomSheetBehavior.STATE_HIDDEN
         }
@@ -160,8 +162,8 @@ open class StaticObjectDetectionActivity : AppCompatActivity(), View.OnClickList
     }
 
     private fun detectObjects(imageUri: Uri) {
-        inputImageView?.setImageDrawable(null)
-        dotViewContainer?.removeAllViews()
+        inputImageView.setImageDrawable(null)
+        dotViewContainer.removeAllViews()
         currentSelectedObjectIndex = 0
 
         try {
@@ -171,24 +173,24 @@ open class StaticObjectDetectionActivity : AppCompatActivity(), View.OnClickList
             return
         }
 
-        inputImageView?.setImageBitmap(inputBitmap)
-        loadingView?.visibility = View.VISIBLE
+        inputImageView.setImageBitmap(inputBitmap)
+        viewBinding.loadingView.visibility = View.VISIBLE
 
         val validBitmap = inputBitmap ?: throw NullPointerException("Bitmap is null!")
 
         // Where the magic happen
         classifier.execute(
-                bitmap = validBitmap,
-                onError = {
-                    Toast.makeText(
-                            this,
-                            "Error regarding GPU support for Quant models[CHAR_LIMIT=60]",
-                            Toast.LENGTH_LONG
-                    ).show()
-                },
-                onResult = {
-                    showSearchResults(it)
-                }
+            bitmap = validBitmap,
+            onError = {
+                Toast.makeText(
+                    this,
+                    "Error regarding GPU support for Quant models[CHAR_LIMIT=60]",
+                    Toast.LENGTH_LONG
+                ).show()
+            },
+            onResult = {
+                showSearchResults(it)
+            }
         )
     }
 

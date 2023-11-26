@@ -1,12 +1,11 @@
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-android-extensions'
 
 android {
     compileSdkVersion 29
     defaultConfig {
         applicationId "com.google.firebase.ml.md"
-        minSdkVersion 19
+        minSdkVersion 23
         targetSdkVersion 29
         versionCode 1
         versionName "1.0"
@@ -30,9 +29,15 @@ android {
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_1_8.toString()
     }
+
     namespace 'com.google.firebase.ml.md'
+
     androidResources {
         noCompress 'tflite'
+    }
+
+    buildFeatures {
+        viewBinding true
     }
 
     defaultConfig {
@@ -40,10 +45,6 @@ android {
             abiFilters 'x86', 'armeabi', 'arm64-v8a'
         }
     }
-}
-
-androidExtensions {
-    experimental = true
 }
 
 dependencies {
@@ -56,13 +57,15 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.3.72"
 
     // MLKit Dependencies
-    implementation 'com.google.firebase:firebase-ml-vision-object-detection-model:19.0.4'
+    implementation 'com.google.android.gms:play-services-vision:20.1.3'
+    implementation 'com.google.firebase:firebase-ml-vision-object-detection-model:19.0.6'
 
     // Tflite
-    final tfliteVersion = '0.0.0-nightly'
-    implementation "org.tensorflow:tensorflow-lite:$tfliteVersion"
-    implementation "org.tensorflow:tensorflow-lite-gpu:$tfliteVersion"
-    implementation "org.tensorflow:tensorflow-lite-support:$tfliteVersion"
+    implementation "org.tensorflow:tensorflow-lite:2.14.0"
+    // Import the GPU delegate plugin Library for GPU inference
+    implementation 'org.tensorflow:tensorflow-lite-gpu-delegate-plugin:0.4.0'
+    implementation 'org.tensorflow:tensorflow-lite-gpu:2.14.0'
+    implementation 'org.tensorflow:tensorflow-lite-support:0.4.4'
 
     api 'com.google.guava:guava:28.2-jre'
 }
