@@ -59,7 +59,8 @@ class MainActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode == Utils.REQUEST_CODE_PHOTO_LIBRARY &&
             resultCode == Activity.RESULT_OK &&
-            data != null) {
+            data != null
+        ) {
             val intent = Intent(this, StaticObjectDetectionActivity::class.java)
             intent.data = data.data
             startActivity(intent)
@@ -83,12 +84,12 @@ class MainActivity : AppCompatActivity() {
 
         override fun getItemCount(): Int = detectionModes.size
 
-        private inner class ModeItemViewHolder internal constructor(view: View) : RecyclerView.ViewHolder(view) {
+        private inner class ModeItemViewHolder(view: View) : RecyclerView.ViewHolder(view) {
 
             private val titleView: TextView = view.findViewById(R.id.mode_title)
             private val subtitleView: TextView = view.findViewById(R.id.mode_subtitle)
 
-            internal fun bindDetectionMode(detectionMode: DetectionMode) {
+            fun bindDetectionMode(detectionMode: DetectionMode) {
                 titleView.setText(detectionMode.titleResId)
                 subtitleView.setText(detectionMode.subtitleResId)
                 itemView.setOnClickListener {
@@ -96,6 +97,7 @@ class MainActivity : AppCompatActivity() {
                     when (detectionMode) {
                         DetectionMode.ODT_LIVE ->
                             activity.startActivity(Intent(activity, LiveObjectDetectionActivity::class.java))
+
                         DetectionMode.ODT_STATIC -> Utils.openImagePicker(activity)
                     }
                 }
