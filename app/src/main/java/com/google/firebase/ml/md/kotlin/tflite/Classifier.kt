@@ -122,23 +122,24 @@ abstract class Classifier protected constructor(activity: Activity?, device: Dev
      * An immutable result returned by a Classifier describing what was recognized.
      */
     class Recognition(
-            /**
-             * A unique identifier for what has been recognized. Specific to the class, not the instance of
-             * the object.
-             */
-            val id: String?,
-            /**
-             * Display name for the recognition.
-             */
-            val title: String?,
-            /**
-             * A sortable score for how good the recognition is relative to others. Higher should be better.
-             */
-            val confidence: Float?,
-            /**
-             * Optional location within the source image for the location of the recognized object.
-             */
-            private var location: RectF?) {
+        /**
+         * A unique identifier for what has been recognized. Specific to the class, not the instance of
+         * the object.
+         */
+        val id: String?,
+        /**
+         * Display name for the recognition.
+         */
+        val title: String?,
+        /**
+         * A sortable score for how good the recognition is relative to others. Higher should be better.
+         */
+        val confidence: Float?,
+        /**
+         * Optional location within the source image for the location of the recognized object.
+         */
+        private var location: RectF?
+    ) {
 
         fun getLocation(): RectF {
             return RectF(location)
@@ -191,7 +192,7 @@ abstract class Classifier protected constructor(activity: Activity?, device: Dev
 
         // Gets the map of label and probability.
         val labeledProbability = TensorLabel(labels, probabilityProcessor.process(outputProbabilityBuffer))
-                .mapWithFloatValue
+            .mapWithFloatValue
         Trace.endSection()
 
         // Gets top-k results.
@@ -229,11 +230,11 @@ abstract class Classifier protected constructor(activity: Activity?, device: Dev
         val numRotation = sensorOrientation / 90
         // TODO(b/143564309): Fuse ops inside ImageProcessor.
         val imageProcessor = ImageProcessor.Builder()
-                .add(ResizeWithCropOrPadOp(cropSize, cropSize))
-                .add(ResizeOp(imageSizeX, imageSizeY, ResizeMethod.NEAREST_NEIGHBOR))
-                .add(Rot90Op(numRotation))
-                .add(preprocessNormalizeOp)
-                .build()
+            .add(ResizeWithCropOrPadOp(cropSize, cropSize))
+            .add(ResizeOp(imageSizeX, imageSizeY, ResizeMethod.NEAREST_NEIGHBOR))
+            .add(Rot90Op(numRotation))
+            .add(preprocessNormalizeOp)
+            .build()
         return imageProcessor.process(inputImageBuffer)
     }
 
@@ -299,10 +300,10 @@ abstract class Classifier protected constructor(activity: Activity?, device: Dev
         private fun getTopKProbability(labelProb: Map<String, Float>): List<Recognition> {
             // Find the best classifications.
             val pq = PriorityQueue(
-                    MAX_RESULTS,
-                    Comparator<Recognition> { lhs, rhs -> // Intentionally reversed to put high confidence at the head of the queue.
-                        java.lang.Float.compare(rhs.confidence!!, lhs.confidence!!)
-                    })
+                MAX_RESULTS,
+                Comparator<Recognition> { lhs, rhs -> // Intentionally reversed to put high confidence at the head of the queue.
+                    java.lang.Float.compare(rhs.confidence!!, lhs.confidence!!)
+                })
             for ((key, value) in labelProb) {
                 pq.add(Recognition("" + key, key, value, null))
             }
@@ -325,12 +326,16 @@ abstract class Classifier protected constructor(activity: Activity?, device: Dev
                 nnApiDelegate = NnApiDelegate()
                 tfliteOptions.addDelegate(nnApiDelegate)
             }
+
             Device.GPU -> {
                 gpuDelegate = GpuDelegate()
                 tfliteOptions.addDelegate(gpuDelegate)
             }
+
             Device.CPU -> {
             }
+
+            null -> error("Device cannot be null at this point")
         }
         tfliteOptions.setNumThreads(numThreads)
         tflite = Interpreter(tfliteModel!!, tfliteOptions)
