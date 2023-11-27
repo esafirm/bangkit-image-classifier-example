@@ -15,6 +15,7 @@
     </com.google.firebase.ml.md.kotlin.camera.CameraSourcePreview>
 
     <include
+        android:id="@+id/top_action_bar"
         layout="@layout/top_action_bar_in_live_camera"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

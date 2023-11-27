@@ -64,12 +64,13 @@ object Utils {
 
         if (allNeededPermissions.isNotEmpty()) {
             ActivityCompat.requestPermissions(
-                    activity, allNeededPermissions.toTypedArray(), /* requestCode= */ 0)
+                activity, allNeededPermissions.toTypedArray(), /* requestCode= */ 0
+            )
         }
     }
 
     internal fun allPermissionsGranted(context: Context): Boolean = getRequiredPermissions(context)
-            .all { checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }
+        .all { checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }
 
     private fun getRequiredPermissions(context: Context): Array<String> {
         return try {
@@ -174,6 +175,7 @@ object Utils {
             ExifInterface.ORIENTATION_UNDEFINED, ExifInterface.ORIENTATION_NORMAL ->
                 // Set the matrix to be null to skip the image transform.
                 null
+
             ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> Matrix().apply { postScale(-1.0f, 1.0f) }
 
             ExifInterface.ORIENTATION_ROTATE_90 -> Matrix().apply { postRotate(90f) }
@@ -185,6 +187,7 @@ object Utils {
                 postRotate(-90.0f)
                 postScale(-1.0f, 1.0f)
             }
+
             else ->
                 // Set the matrix to be null to skip the image transform.
                 null

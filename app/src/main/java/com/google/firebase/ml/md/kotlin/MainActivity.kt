@@ -20,7 +20,6 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -28,6 +27,8 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.ml.md.R
+import com.google.firebase.ml.md.databinding.ActivityMainBinding
+import com.google.firebase.ml.md.databinding.DetectionModeItemBinding
 
 /** Entry activity to select the detection mode.  */
 class MainActivity : AppCompatActivity() {
@@ -41,8 +42,11 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(bundle)
 
         AppCompatDelegate.setCompatVectorFromResourcesEnabled(true)
-        setContentView(R.layout.activity_main)
-        findViewById<RecyclerView>(R.id.mode_recycler_view).apply {
+
+        val binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        binding.modeRecyclerView.apply {
             setHasFixedSize(true)
             layoutManager = LinearLayoutManager(this@MainActivity)
             adapter = ModeItemAdapter(DetectionMode.values())
@@ -69,13 +73,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private inner class ModeItemAdapter internal constructor(private val detectionModes: Array<DetectionMode>) :
-        RecyclerView.Adapter<ModeItemAdapter.ModeItemViewHolder>() {
+    private inner class ModeItemAdapter(
+        private val detectionModes: Array<DetectionMode>
+    ) : RecyclerView.Adapter<ModeItemAdapter.ModeItemViewHolder>() {
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ModeItemViewHolder {
             return ModeItemViewHolder(
-                LayoutInflater.from(parent.context)
-                    .inflate(R.layout.detection_mode_item, parent, false)
+                DetectionModeItemBinding.inflate(
+                    LayoutInflater.from(parent.context), parent, false
+                )
             )
         }
 
@@ -84,10 +90,12 @@ class MainActivity : AppCompatActivity() {
 
         override fun getItemCount(): Int = detectionModes.size
 
-        private inner class ModeItemViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        private inner class ModeItemViewHolder(
+            binding: DetectionModeItemBinding
+        ) : RecyclerView.ViewHolder(binding.root) {
 
-            private val titleView: TextView = view.findViewById(R.id.mode_title)
-            private val subtitleView: TextView = view.findViewById(R.id.mode_subtitle)
+            private val titleView: TextView = binding.modeTitle
+            private val subtitleView: TextView = binding.modeSubtitle
 
             fun bindDetectionMode(detectionMode: DetectionMode) {
                 titleView.setText(detectionMode.titleResId)

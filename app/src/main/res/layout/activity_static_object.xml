@@ -5,6 +5,7 @@
     android:layout_height="match_parent">
 
     <include
+        android:id="@+id/top_action_bar"
         layout="@layout/top_action_bar_in_static_image"
         android:layout_width="match_parent"
         android:layout_height="@dimen/top_action_bar_height"

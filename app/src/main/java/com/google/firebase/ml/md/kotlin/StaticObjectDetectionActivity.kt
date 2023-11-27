@@ -75,8 +75,8 @@ open class StaticObjectDetectionActivity : AppCompatActivity(), View.OnClickList
 
         setUpBottomSheet()
 
-        findViewById<View>(R.id.close_button).setOnClickListener(this)
-        findViewById<View>(R.id.photo_library_button).setOnClickListener(this)
+        viewBinding.topActionBar.closeButton.setOnClickListener(this)
+        viewBinding.topActionBar.photoLibraryButton.setOnClickListener(this)
 
         intent?.data?.let(::detectObjects)
     }
